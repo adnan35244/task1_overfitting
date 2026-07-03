@@ -72,6 +72,25 @@ def get_dataloaders(batch_size=128, use_augmentation=False):
 # -------------------------------------------------------------------------
 # 2. ARCHITECTURE DEFINITION
 # -------------------------------------------------------------------------
+class NormalMLP(nn.Module):
+    """
+    A standard, reasonably-sized MLP for MNIST.
+    This serves as a baseline before we intentionally induce overfitting.
+    We include Dropout here to make it a well-behaved, "normal" model.
+    """
+    def __init__(self):
+        super(NormalMLP, self).__init__()
+        self.net = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(28 * 28, 128),
+            nn.ReLU(),
+            nn.Dropout(0.2), # Added dropout to reduce the train/val gap
+            nn.Linear(128, 10)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
 class LargeMLP(nn.Module):
     """
     A very large Multi-Layer Perceptron (MLP) architecture.
@@ -203,6 +222,23 @@ def main():
     
     epochs = 15 # Train for enough epochs to see overfitting
     criterion = nn.CrossEntropyLoss()
+
+    # =========================================================================
+    # PHASE 0: NORMAL MODEL (Baseline)
+    # =========================================================================
+    print("\n--- PHASE 0: Normal Model Baseline ---")
+    print("Using a standard, smaller MLP to show normal behavior.")
+    train_loader_norm, val_loader_norm, test_loader_norm = get_dataloaders(use_augmentation=False)
+    
+    model_norm = NormalMLP().to(device)
+    optimizer_norm = optim.Adam(model_norm.parameters(), lr=1e-3)
+    
+    history_norm = train_model(model_norm, train_loader_norm, val_loader_norm, 
+                               optimizer_norm, criterion, epochs=epochs, device=device)
+    
+    print("\nEvaluating Normal Model on Test Set:")
+    evaluate_model(model_norm, test_loader_norm, device)
+    plot_history(history_norm, "Phase 0 - Normal Baseline")
 
     # =========================================================================
     # PHASE 1: FORCE OVERFITTING
